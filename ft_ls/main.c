@@ -64,8 +64,9 @@
 #include <sys/stat.h>
 
 typedef struct ls_command {
+	int		multiple_folders;
 	char	*flags;
-	char	*folder_list[];
+	char	**folder_list;
 } ls_command;
 
 typedef struct ls_output {
@@ -82,16 +83,16 @@ void ls_error(const char *error_string) {
 int find_in_string(char *string, char character) {
 	int index = 0;
 
-	printf("[DEBUG] : finding %c among flags...\n", character);
-	while (string[index] == '\0') {
-		printf("[DEBUG] : searchint at index %d: %c\n", index, string[index]);
+	// printf("[DEBUG] : finding %c among flags. Flags: %s\n", character, string);
+	while (string[index] != '\0') {
+		// printf("[DEBUG] : searchint at index %d: %c\n", index, string[index]);
 		if (string[index] == character) {
-			printf("[DEBUG] : Found! Returning...\n");
+			// printf("[DEBUG] : Found! Returning...\n");
 			return (1);
 		}
 		index++;
 	}
-	printf("[DEBUG] : Not found! Returning...\n");
+	// printf("[DEBUG] : Not found! Returning...\n");
 	return (0);
 }
 
@@ -113,7 +114,7 @@ void print_file_data(struct dirent *pDirent) {
 	printf("\t");
 }
 
-void print_file_list(struct dirent *pDirent, ls_command *command_structure) {
+void print_file_entry(struct dirent *pDirent, ls_command *command_structure) {
 	if (find_in_string(command_structure->flags, 'l') == 1)
 		print_file_data(pDirent);
 	printf("%s\n", pDirent->d_name);
@@ -124,37 +125,61 @@ void print_file_list(struct dirent *pDirent, ls_command *command_structure) {
 	// printf("It's d_type is %d\n", pDirent->d_type);
 }
 
+int ft_strlen(char * string) {
+	int index = 0;
+
+	while (string[index] != '\0')
+		index++;
+	return (index);
+}
+
 void parse_command(char *argv[], ls_command *command_structure) {
 	int index = 1;
 	int flag_index = 0;
 	int folder_list_index = 0;
 	int flag_string_index = 0;
 
-	char *flag_string = malloc(256);
-	if (!flag_string) {
+	command_structure->multiple_folders = 0;
+	command_structure->flags = malloc(sizeof(char*) * 256);
+	command_structure->folder_list = malloc(sizeof(char**) * 256);
+	if (!command_structure->flags) {
 		perror("ERROR: malloc failed");
 		exit(EXIT_FAILURE);
 	}
-	flag_string[0] = '\0'; // Initialize the string
-
+	command_structure->flags[0] = '\0'; // Initialize the string
 	while (argv[index] != NULL) {
+		// printf("[DEBUG] : checking args: %s\n", argv[index]);
 		if (argv[index][0] == '-') {
-			printf("[DEBUG] : new flag_list found\n");
+			// printf("[DEBUG] : new flag_list found\n");
 			flag_index = 1;
 			while (argv[index][flag_index]) {
-				flag_string[flag_string_index] = argv[index][flag_index];
+				command_structure->flags[flag_string_index] = argv[index][flag_index];
 				flag_string_index++;
 				flag_index++;
 			}
 		}
 		else {
-			command_structure->folder_list[folder_list_index++] = argv[index];
-			printf("[DEBUG] : list of folders to write updated: %s\n", argv[index]);
+			if (folder_list_index > 0)
+				command_structure->multiple_folders = 1;
+			// command_structure->folder_list[folder_list_index] = malloc(sizeof(char) * ft_strlen(argv[index]));
+			command_structure->folder_list[folder_list_index] = argv[index];
+			// printf("[DEBUG] : list of folders to write updated: %s\n", command_structure->folder_list[folder_list_index]);
+			folder_list_index++;
 		}
 		index++;
 	}
-	flag_string[flag_string_index] = '\0'; // Null-terminate the result
-	printf("[DEBUG] : list of flags: %s\n", flag_string);
+	command_structure->flags[flag_string_index] = '\0'; // Null-terminate the result
+	// printf("[DEBUG] : list of flags: %s\n", command_structure->flags);
+}
+
+
+void free_command_structure(ls_command *command_structure) {
+	if (command_structure->flags)
+		free(command_structure->flags);
+	if (command_structure->folder_list)
+		free(command_structure->folder_list);
+	if (command_structure->multiple_folders == 1)
+		command_structure->multiple_folders = 0;
 }
 
 int main(int argc, char *argv[]) {
@@ -163,44 +188,42 @@ int main(int argc, char *argv[]) {
 	ls_command		command_structure;
 	char			buffer[1024];
 	char			*abspath;
-	int				list_flag = 0;
 	int				folder_index = 0;
 
+	argc = 0;
 	parse_command(argv, &command_structure);
+	// while (command_structure.folder_list[folder_index]) {
+	// 	printf("[DEBUG] : folder at %d : %s\n", folder_index, command_structure.folder_list[folder_index]);
+	// 	folder_index++;
+	// }
+	// folder_index = 0;
 	while (command_structure.folder_list[folder_index]) {
+		// printf("[DEBUG] : cycle in %s\n", command_structure.folder_list[folder_index]);
 		abspath = realpath(command_structure.folder_list[folder_index], buffer);
-		printf("\n%s:\n", abspath);
-		if (abspath)
-			directory = opendir(abspath);
-		else
-			directory = opendir(".");
+		if (!abspath) {
+			printf("[DEBUG] : could not find absolute path.\n");
+			folder_index++;
+    		continue ;
+		}
+		directory = opendir(abspath);
+		if (folder_index > 0 && command_structure.multiple_folders == 1)
+			printf("\n");
+		if (command_structure.multiple_folders == 1)
+			printf("%s:\n", command_structure.folder_list[folder_index]);
 		if (!directory) {
-			closedir(directory);
-			printf("[DEBUG] : ft_ls: cannot access '%s': No such file or directory\n", argv[1]);
-			return (1);
+			printf("[DEBUG] : ft_ls: cannot access '%s': No such file or directory\n", abspath);
+			continue ;
 		}
-		pDirent = readdir(directory);
-		while (pDirent) {
-			printf("[DEBUG] : cycling dirent\n");
-			if (pDirent->d_name[0] == '.') {
-				if (find_in_string(command_structure.flags, 'a') == 1) {
-					printf("[DEBUG] : Hidden file. -a flag is enabled. Listing...\n");
-					print_file_list(pDirent, &command_structure);
-					pDirent = readdir(directory);
-					continue ;
-				}
-				else {
-					pDirent = readdir(directory);
-					continue ;
-				}
+		while (pDirent = readdir(directory)) {
+			// printf("[DEBUG] : cycling dirent %s\n", pDirent->d_name);
+			if (pDirent->d_name[0] == '.' && find_in_string(command_structure.flags, 'a') != 1) {
+				continue ;
 			}
-			print_file_list(pDirent, &command_structure);
-			pDirent = readdir(directory);
+			print_file_entry(pDirent, &command_structure);
 		}
-		// free(abspath);
 		folder_index++;
 	}
-	printf("[DEBUG] : Directory open: %s\n", abspath);
+	free_command_structure(&command_structure);
 	closedir(directory);
 	return (0);
 }
