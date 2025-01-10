@@ -9,7 +9,7 @@ HDRS = ./*.h
 FLAGS = -Wall -Wextra -Werror
 
 $(NAME):
-		gcc -c $(FLAGS) $(SRCS)
+		gcc -c $(FLAGS) $(SRCS) -o $(NAME)
 		ar rc $(NAME) $(OBJS)
 		ranlib $(NAME)
 
