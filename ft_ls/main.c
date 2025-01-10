@@ -60,6 +60,7 @@
 
 #include <dirent.h>
 #include <stdio.h>
+#include <string.h>
 #include <stdlib.h>
 #include <sys/stat.h>
 
@@ -133,6 +134,18 @@ int ft_strlen(char * string) {
 	return (index);
 }
 
+void free_command_structure(ls_command *command_structure) {
+	int index = 0;
+
+	if (command_structure->flags)
+		free(command_structure->flags);
+	if (command_structure->folder_list)
+		while (command_structure->folder_list[index++])
+            free(command_structure->folder_list[index]);
+	if (command_structure->multiple_folders == 1)
+		command_structure->multiple_folders = 0;
+}
+
 void parse_command(char *argv[], ls_command *command_structure) {
 	int index = 1;
 	int flag_index = 0;
@@ -141,12 +154,17 @@ void parse_command(char *argv[], ls_command *command_structure) {
 
 	command_structure->multiple_folders = 0;
 	command_structure->flags = malloc(sizeof(char*) * 256);
-	command_structure->folder_list = malloc(sizeof(char**) * 256);
 	if (!command_structure->flags) {
 		perror("ERROR: malloc failed");
 		exit(EXIT_FAILURE);
 	}
 	command_structure->flags[0] = '\0'; // Initialize the string
+	command_structure->folder_list = malloc(sizeof(char**) * 256);
+	if (!command_structure->folder_list) {
+		perror("ERROR: malloc on folder's list failed");
+        free_command_structure(command_structure);
+		exit(EXIT_FAILURE);
+	}
 	while (argv[index] != NULL) {
 		// printf("[DEBUG] : checking args: %s\n", argv[index]);
 		if (argv[index][0] == '-') {
@@ -161,26 +179,32 @@ void parse_command(char *argv[], ls_command *command_structure) {
 		else {
 			if (folder_list_index > 0)
 				command_structure->multiple_folders = 1;
-			// command_structure->folder_list[folder_list_index] = malloc(sizeof(char) * ft_strlen(argv[index]));
-			command_structure->folder_list[folder_list_index] = argv[index];
+			command_structure->folder_list[folder_list_index] = strdup(argv[index]);
 			// printf("[DEBUG] : list of folders to write updated: %s\n", command_structure->folder_list[folder_list_index]);
+			if (!command_structure->folder_list[folder_list_index]) {
+                perror("ERROR: strdup failed");
+        		free_command_structure(command_structure);
+                exit(EXIT_FAILURE);
+            }
 			folder_list_index++;
 		}
 		index++;
 	}
-	command_structure->flags[flag_string_index] = '\0'; // Null-terminate the result
+    if (folder_list_index == 0) {
+        command_structure->folder_list[0] = strdup(".");
+        if (!command_structure->folder_list[0]) {
+            perror("ERROR: strdup failed");
+            free(command_structure->flags);
+            free(command_structure->folder_list);
+            exit(EXIT_FAILURE);
+        }
+        folder_list_index++;
+    }
+	command_structure->folder_list[folder_list_index] = NULL;
+	command_structure->flags[flag_string_index] = '\0';
 	// printf("[DEBUG] : list of flags: %s\n", command_structure->flags);
 }
 
-
-void free_command_structure(ls_command *command_structure) {
-	if (command_structure->flags)
-		free(command_structure->flags);
-	if (command_structure->folder_list)
-		free(command_structure->folder_list);
-	if (command_structure->multiple_folders == 1)
-		command_structure->multiple_folders = 0;
-}
 
 int main(int argc, char *argv[]) {
 	DIR				*directory;
@@ -190,7 +214,6 @@ int main(int argc, char *argv[]) {
 	char			*abspath;
 	int				folder_index = 0;
 
-	argc = 0;
 	parse_command(argv, &command_structure);
 	// while (command_structure.folder_list[folder_index]) {
 	// 	printf("[DEBUG] : folder at %d : %s\n", folder_index, command_structure.folder_list[folder_index]);
@@ -198,12 +221,12 @@ int main(int argc, char *argv[]) {
 	// }
 	// folder_index = 0;
 	while (command_structure.folder_list[folder_index]) {
-		// printf("[DEBUG] : cycle in %s\n", command_structure.folder_list[folder_index]);
+		printf("[DEBUG] : cycle in %s\n", command_structure.folder_list[folder_index]);
 		abspath = realpath(command_structure.folder_list[folder_index], buffer);
 		if (!abspath) {
 			printf("[DEBUG] : could not find absolute path.\n");
 			folder_index++;
-    		continue ;
+			continue ;
 		}
 		directory = opendir(abspath);
 		if (folder_index > 0 && command_structure.multiple_folders == 1)
@@ -216,9 +239,8 @@ int main(int argc, char *argv[]) {
 		}
 		while (pDirent = readdir(directory)) {
 			// printf("[DEBUG] : cycling dirent %s\n", pDirent->d_name);
-			if (pDirent->d_name[0] == '.' && find_in_string(command_structure.flags, 'a') != 1) {
+			if (pDirent->d_name[0] == '.' && find_in_string(command_structure.flags, 'a') != 1)
 				continue ;
-			}
 			print_file_entry(pDirent, &command_structure);
 		}
 		folder_index++;
