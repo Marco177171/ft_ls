@@ -58,16 +58,22 @@
 
 // find given documents -> eg: ls -la Documents/*.pdf -> only show pdfs
 
+// todo: recursive lists of subdirectories, order and reverse order on output print
+// sort by time insted of ascii
+
 #include <dirent.h>
 #include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <time.h>
 
 typedef struct ls_command {
 	int		multiple_folders;
 	char	*flags;
 	char	**folder_list;
+	int		folder_count;
 } ls_command;
 
 typedef struct ls_output {
@@ -86,7 +92,7 @@ int find_in_string(char *string, char character) {
 
 	// printf("[DEBUG] : finding %c among flags. Flags: %s\n", character, string);
 	while (string[index] != '\0') {
-		// printf("[DEBUG] : searchint at index %d: %c\n", index, string[index]);
+		// printf("[DEBUG] : searching at index %d: %c\n", index, string[index]);
 		if (string[index] == character) {
 			// printf("[DEBUG] : Found! Returning...\n");
 			return (1);
@@ -101,7 +107,8 @@ void print_file_data(struct dirent *pDirent) {
 	struct stat fileStat;
 
 	stat(pDirent->d_name, &fileStat);
-	// filestat loads current directory's permissions. Load full path for different dirs
+	// if (S_ISDIR(fileStat.st_mode))
+	// 	printf("[DEBUG] : %s is a directory!\n", pDirent->d_name);
 	printf((S_ISDIR(fileStat.st_mode))  ? "d" : "-");
 	printf((fileStat.st_mode & S_IRUSR) ? "r" : "-");
 	printf((fileStat.st_mode & S_IWUSR) ? "w" : "-");
@@ -112,17 +119,28 @@ void print_file_data(struct dirent *pDirent) {
 	printf((fileStat.st_mode & S_IROTH) ? "r" : "-");
 	printf((fileStat.st_mode & S_IWOTH) ? "w" : "-");
 	printf((fileStat.st_mode & S_IXOTH) ? "x" : "-");
-	printf("\t");
+	printf(" ");
+}
+
+void print_file_creation_time(char *path) {
+    struct stat attr;
+
+    stat(path, &attr);
+    printf("%s ", ctime(&attr.st_mtime));
 }
 
 void print_file_entry(struct dirent *pDirent, ls_command *command_structure) {
-	if (find_in_string(command_structure->flags, 'l') == 1)
+	if (find_in_string(command_structure->flags, 'l') == 1) {
 		print_file_data(pDirent);
-	printf("%s\n", pDirent->d_name);
-	// printf("\n");
-	// printf("It's d_ino is %ld\n", pDirent->d_ino);
-	// printf("It's d_off is %ld\n", pDirent->d_off);
-	// printf("It's d_reclen is %d\n", pDirent->d_reclen);
+		print_file_creation_time(pDirent->d_name);
+	}
+	printf("%s", pDirent->d_name);
+	// if (find_in_string(command_structure->flags, 'l') == 1)
+	// 	printf("\n");
+	
+	printf(find_in_string(command_structure->flags, 'l') == 1  ? "\n" : "\t");
+	// printf("It's d_ino is %ld\t", pDirent->d_ino);
+	// printf("It's d_off is %ld\t", pDirent->d_off);
 	// printf("It's d_type is %d\n", pDirent->d_type);
 }
 
@@ -142,26 +160,24 @@ void free_command_structure(ls_command *command_structure) {
 	if (command_structure->folder_list)
 		while (command_structure->folder_list[index++])
             free(command_structure->folder_list[index]);
-	if (command_structure->multiple_folders == 1)
-		command_structure->multiple_folders = 0;
 }
 
 void parse_command(char *argv[], ls_command *command_structure) {
 	int index = 1;
 	int flag_index = 0;
-	int folder_list_index = 0;
 	int flag_string_index = 0;
 
 	command_structure->multiple_folders = 0;
 	command_structure->flags = malloc(sizeof(char*) * 256);
+	command_structure->folder_count = 0;
 	if (!command_structure->flags) {
-		perror("ERROR: malloc failed");
+		perror("[ERROR] : malloc failed");
 		exit(EXIT_FAILURE);
 	}
 	command_structure->flags[0] = '\0'; // Initialize the string
 	command_structure->folder_list = malloc(sizeof(char**) * 256);
 	if (!command_structure->folder_list) {
-		perror("ERROR: malloc on folder's list failed");
+		perror("[ERROR] : malloc on folder's list failed");
         free_command_structure(command_structure);
 		exit(EXIT_FAILURE);
 	}
@@ -177,54 +193,58 @@ void parse_command(char *argv[], ls_command *command_structure) {
 			}
 		}
 		else {
-			if (folder_list_index > 0)
+			if (command_structure->folder_count > 0)
 				command_structure->multiple_folders = 1;
-			command_structure->folder_list[folder_list_index] = strdup(argv[index]);
-			// printf("[DEBUG] : list of folders to write updated: %s\n", command_structure->folder_list[folder_list_index]);
-			if (!command_structure->folder_list[folder_list_index]) {
-                perror("ERROR: strdup failed");
+			command_structure->folder_list[command_structure->folder_count] = strdup(argv[index]);
+			// printf("[DEBUG] : list of folders to write updated: %s\n", command_structure->folder_list[command_structure->folder_count]);
+			if (!command_structure->folder_list[command_structure->folder_count]) {
+                // perror("[ERROR] : strdup failed");
         		free_command_structure(command_structure);
                 exit(EXIT_FAILURE);
             }
-			folder_list_index++;
+			command_structure->folder_count++;
 		}
 		index++;
 	}
-    if (folder_list_index == 0) {
+    if (command_structure->folder_count == 0) {
         command_structure->folder_list[0] = strdup(".");
         if (!command_structure->folder_list[0]) {
-            perror("ERROR: strdup failed");
+            perror("[ERROR] : strdup failed");
             free(command_structure->flags);
             free(command_structure->folder_list);
             exit(EXIT_FAILURE);
         }
-        folder_list_index++;
+        command_structure->folder_count++;
     }
-	command_structure->folder_list[folder_list_index] = NULL;
+	// command_structure->folder_count = 0;
 	command_structure->flags[flag_string_index] = '\0';
 	// printf("[DEBUG] : list of flags: %s\n", command_structure->flags);
 }
 
-
 int main(int argc, char *argv[]) {
 	DIR				*directory;
 	struct dirent	*pDirent;
+	struct stat		fileStat;
 	ls_command		command_structure;
 	char			buffer[1024];
 	char			*abspath;
 	int				folder_index = 0;
+	time_t			current_time;
+
+	time(&current_time);
+	printf("%s", ctime(&current_time));
 
 	parse_command(argv, &command_structure);
-	// while (command_structure.folder_list[folder_index]) {
-	// 	printf("[DEBUG] : folder at %d : %s\n", folder_index, command_structure.folder_list[folder_index]);
-	// 	folder_index++;
-	// }
-	// folder_index = 0;
 	while (command_structure.folder_list[folder_index]) {
-		printf("[DEBUG] : cycle in %s\n", command_structure.folder_list[folder_index]);
+		// printf("[DEBUG] : folder at %d : %s\n", folder_index, command_structure.folder_list[folder_index]);
+		folder_index++;
+	}
+	folder_index = 0;
+	while (command_structure.folder_list[folder_index]) {
+		// printf("[DEBUG] : cycle in %s\n", command_structure.folder_list[folder_index]);
 		abspath = realpath(command_structure.folder_list[folder_index], buffer);
 		if (!abspath) {
-			printf("[DEBUG] : could not find absolute path.\n");
+			// printf("[DEBUG] : could not find absolute path.\n");
 			folder_index++;
 			continue ;
 		}
@@ -234,15 +254,20 @@ int main(int argc, char *argv[]) {
 		if (command_structure.multiple_folders == 1)
 			printf("%s:\n", command_structure.folder_list[folder_index]);
 		if (!directory) {
-			printf("[DEBUG] : ft_ls: cannot access '%s': No such file or directory\n", abspath);
+			// printf("[DEBUG] : ft_ls: cannot access '%s': No such file or directory\n", abspath);
 			continue ;
 		}
 		while (pDirent = readdir(directory)) {
 			// printf("[DEBUG] : cycling dirent %s\n", pDirent->d_name);
 			if (pDirent->d_name[0] == '.' && find_in_string(command_structure.flags, 'a') != 1)
 				continue ;
+			stat(pDirent->d_name, &fileStat);
+			// if (S_ISDIR(fileStat.st_mode) && find_in_string(command_structure.flags, 'R') == 1)
+			// 	printf("[DEBUG] : found a subdirectory to list recursively: %s\n", pDirent->d_name);
 			print_file_entry(pDirent, &command_structure);
 		}
+		if (find_in_string(command_structure.flags, 'l') != 1)
+			printf("\n");
 		folder_index++;
 	}
 	free_command_structure(&command_structure);
