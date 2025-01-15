@@ -1,6 +1,6 @@
 NAME = ft_ls.a
 
-SRCS = ./*.c 
+SRCS = ./srcs/*.c 
 
 OBJS = $(SRCS:.c=.o)
 
