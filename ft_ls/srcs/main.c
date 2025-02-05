@@ -138,7 +138,7 @@ void print_file_entry(struct dirent *pDirent, t_command *command_structure) {
 	// if (find_in_string(command_structure->flags, 'l') == 1)
 	// 	printf("\n");
 	
-	printf(find_in_string(command_structure->flags, 'l') == 1 ? "\n" : "\t");
+	printf(find_in_string(command_structure->flags, 'l') == 1 ? "\n" : "  ");
 	// printf("It's d_ino is %ld\t", pDirent->d_ino);
 	// printf("It's d_off is %ld\t", pDirent->d_off);
 	// printf("It's d_type is %d\n", pDirent->d_type);
@@ -162,6 +162,13 @@ void free_command_structure(t_command *command_structure) {
             free(command_structure->folder_list[index]);
 }
 
+void init_command_structure(t_command *command_structure) {
+	command_structure->folder_count = 0;
+	command_structure->multiple_folders = 0;
+	command_structure->flags = malloc(sizeof(char*));
+	command_structure->folder_list = malloc(sizeof(char**));
+}
+
 int main(int argc, char *argv[]) {
 	DIR				*directory;
 	struct dirent	*pDirent;
@@ -170,8 +177,10 @@ int main(int argc, char *argv[]) {
 	char			buffer[1024];
 	char			*abspath;
 	int				folder_index = 0;
+	int				list_index = 0;
 	// time_t			current_time;
 
+	init_command_structure(command_structure);
 	parse_command(argc, argv, command_structure);
 	while (command_structure->folder_list[folder_index]) {
 		// printf("[DEBUG] : folder at %d : %s\n", folder_index, command_structure->folder_list[folder_index]);

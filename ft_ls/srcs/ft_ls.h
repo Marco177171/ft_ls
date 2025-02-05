@@ -24,21 +24,21 @@ typedef struct s_output {
 } t_output;
 
 // parser
-int     find_in_string(char *string, char character);
-void    parse_command(int argc, char *argv[], t_command *command_structure);
+int find_in_string(char *string, char character);
+void parse_command(int argc, char *argv[], t_command *command_structure);
 
 // measures
-int		ft_strlen(char * string);
+int ft_strlen(char * string);
 
 // sorting algos
-void	bubble_sort_output(char **entry_names);
+void bubble_sort_output(char **entry_names);
 
 // print data
-void	print_file_data(struct dirent *pDirent);
-void	print_file_creation_time(char *path);
-void	print_file_entry(struct dirent *pDirent, t_command *command_structure);
+void print_file_data(struct dirent *pDirent);
+void print_file_creation_time(char *path);
+void print_file_entry(struct dirent *pDirent, t_command *command_structure);
 
 // memory managers
-void	free_command_structure(t_command *command_structure);
+void free_command_structure(t_command *command_structure);
 
 #endif
