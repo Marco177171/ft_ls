@@ -1,2 +1,3 @@
-.ft_ls/a.out
-.ft_ls/.vscode
+ft_ls/srcs/a.out
+# vscode
+.vscode

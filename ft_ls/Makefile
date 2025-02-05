@@ -1,4 +1,4 @@
-NAME = ft_ls.a
+NAME = ft_ls
 
 SRCS = ./srcs/*.c 
 
@@ -9,7 +9,7 @@ HDRS = ./*.h
 FLAGS = -Wall -Wextra -Werror
 
 $(NAME):
-		gcc -c $(FLAGS) $(SRCS) -o $(NAME)
+		gcc -c $(FLAGS) $(SRCS) $(HDRS)
 		ar rc $(NAME) $(OBJS)
 		ranlib $(NAME)
 
