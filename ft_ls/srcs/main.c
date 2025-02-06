@@ -79,69 +79,37 @@ int find_in_string(char *string, char character) {
 	return (0);
 }
 
-void bubble_sort_output(char **entry_names) {
-	char	*temp;
-	int		entries_index = 0;
-	int		name_index = 0;
-
-	temp = malloc(sizeof(entry_names));
-	while (entry_names[entries_index + 1]) {
-		// printf("[DEBUG] : %s is a directory!\n", entry_names[entries_index]);
-		while (entry_names[entries_index][name_index] && entry_names[entries_index]) {
-			if (entry_names[entries_index + 1][name_index] < entry_names[entries_index][name_index]) {	
-				// printf("[DEBUG] : switching %s with %s on index %d\n", entry_names[entries_index], entry_names[entries_index + 1], name_index);
-				temp = strdup(entry_names[entries_index]);
-				entry_names[entries_index] = strdup(entry_names[entries_index + 1]);
-				entry_names[entries_index + 1] = strdup(temp);
-				free(temp);
-			}
-			name_index++;
-		}
-		temp = malloc(sizeof(char*));
-		free(temp);
-		entries_index++;
-	}
+void print_file_data(t_entry *entry) {
+	write(1, (S_ISDIR(entry->fileStat.st_mode))  ? "d" : "-", 1);
+	write(1, (entry->fileStat.st_mode & S_IRUSR) ? "r" : "-", 1);
+	write(1, (entry->fileStat.st_mode & S_IWUSR) ? "w" : "-", 1);
+	write(1, (entry->fileStat.st_mode & S_IXUSR) ? "x" : "-", 1);
+	write(1, (entry->fileStat.st_mode & S_IRGRP) ? "r" : "-", 1);
+	write(1, (entry->fileStat.st_mode & S_IWGRP) ? "w" : "-", 1);
+	write(1, (entry->fileStat.st_mode & S_IXGRP) ? "x" : "-", 1);
+	write(1, (entry->fileStat.st_mode & S_IROTH) ? "r" : "-", 1);
+	write(1, (entry->fileStat.st_mode & S_IWOTH) ? "w" : "-", 1);
+	write(1, (entry->fileStat.st_mode & S_IXOTH) ? "x" : "-", 1);
+	write(1, " ", 1);
 }
 
-void print_file_data(struct dirent *pDirent) {
-	struct stat fileStat;
-
-	stat(pDirent->d_name, &fileStat);
-	// if (S_ISDIR(fileStat.st_mode))
-	// 	printf("[DEBUG] : %s is a directory!\n", pDirent->d_name);
-	printf((S_ISDIR(fileStat.st_mode))  ? "d" : "-");
-	printf((fileStat.st_mode & S_IRUSR) ? "r" : "-");
-	printf((fileStat.st_mode & S_IWUSR) ? "w" : "-");
-	printf((fileStat.st_mode & S_IXUSR) ? "x" : "-");
-	printf((fileStat.st_mode & S_IRGRP) ? "r" : "-");
-	printf((fileStat.st_mode & S_IWGRP) ? "w" : "-");
-	printf((fileStat.st_mode & S_IXGRP) ? "x" : "-");
-	printf((fileStat.st_mode & S_IROTH) ? "r" : "-");
-	printf((fileStat.st_mode & S_IWOTH) ? "w" : "-");
-	printf((fileStat.st_mode & S_IXOTH) ? "x" : "-");
-	printf(" ");
+void print_file_creation_time(t_entry *entry) {
+	write(1, ctime(&entry->fileStat.st_ctime), 19);
+	write(1, " ", 1);
 }
 
-void print_file_creation_time(char *path) {
-    struct stat attr;
-
-    stat(path, &attr);
-    printf("%s", ctime(&attr.st_mtime));
-}
-
-void print_file_entry(struct dirent *pDirent, t_command *command_structure) {
+void print_file_entry(t_entry *entry, t_command *command_structure) {
 	if (find_in_string(command_structure->flags, 'l') == 1) {
-		print_file_data(pDirent);
-		print_file_creation_time(pDirent->d_name);
+		struct passwd *pwd = getpwuid(entry->fileStat.st_uid);
+		struct group *grp = getgrgid(entry->fileStat.st_gid);
+		print_file_data(entry);
+		if (find_in_string(command_structure->flags, 'g') != 1)
+			write(1, strcat(pwd->pw_name, " "), strlen(pwd->pw_name) + 1);
+		write(1, strcat(grp->gr_name, " "), strlen(grp->gr_name) + 1);
+		print_file_creation_time(entry);
 	}
-	printf("%s", pDirent->d_name);
-	// if (find_in_string(command_structure->flags, 'l') == 1)
-	// 	printf("\n");
-	
-	printf(find_in_string(command_structure->flags, 'l') == 1 ? "\n" : "  ");
-	// printf("It's d_ino is %ld\t", pDirent->d_ino);
-	// printf("It's d_off is %ld\t", pDirent->d_off);
-	// printf("It's d_type is %d\n", pDirent->d_type);
+	write(1, entry->name, strlen(entry->name));
+	write(1, find_in_string(command_structure->flags, 'l') == 1 ? "\n" : " ", 1);
 }
 
 int ft_strlen(char * string) {
@@ -159,7 +127,7 @@ void free_command_structure(t_command *command_structure) {
 		free(command_structure->flags);
 	if (command_structure->folder_list)
 		while (command_structure->folder_list[index++])
-            free(command_structure->folder_list[index]);
+			free(command_structure->folder_list[index]);
 }
 
 void init_command_structure(t_command *command_structure) {
@@ -169,55 +137,142 @@ void init_command_structure(t_command *command_structure) {
 	command_structure->folder_list = malloc(sizeof(char**));
 }
 
+void sort_entries(t_entry *entries) {
+	t_entry swap_space;
+	int index = 0, found_flag = 0;
+
+	while (entries[index].name) {
+		while (entries[found_flag].name) {
+			if (strcmp(entries[index].name, entries[found_flag].name) < 0) {
+				// printf("[DEBUG] : swapping %s and %s\n", entries[index].name, entries[found_flag].name);
+				swap_space = entries[index];
+				entries[index] = entries[found_flag];
+				entries[found_flag] = swap_space;
+				// printf("[DEBUG] : swapped %s and %s\n", entries[index].name, entries[found_flag].name);
+			}
+			found_flag++;
+		}
+		found_flag = 0;
+		index++;
+	}
+}
+
+void sort_entries_by_time(t_entry *entries) {
+	t_entry swap_space;
+	int index = 0, found_flag = 0;
+
+	while (entries[index].name) {
+		while (entries[found_flag].name) {
+			if (entries[index].fileStat.st_ctime > entries[found_flag].fileStat.st_ctime) {
+				// printf("[DEBUG] : swapping %s and %s\n", entries[index].name, entries[found_flag].name);
+				swap_space = entries[index];
+				entries[index] = entries[found_flag];
+				entries[found_flag] = swap_space;
+				// printf("[DEBUG] : swapped %s and %s\n", entries[index].name, entries[found_flag].name);
+			}
+			found_flag++;
+		}
+		found_flag = 0;
+		index++;
+	}
+}
+
 int main(int argc, char *argv[]) {
-	DIR				*directory;
-	struct dirent	*pDirent;
-	struct stat		fileStat;
-	t_command		*command_structure;
-	char			buffer[1024];
-	char			*abspath;
-	int				folder_index = 0;
-	int				list_index = 0;
-	// time_t			current_time;
+	DIR			*directory;
+	struct		dirent *pDirent;
+	struct		stat fileStat;
+	t_command	*command_structure = malloc(sizeof(t_command));
+	
+	if (!command_structure) {
+		perror("[ERROR] : malloc failed");
+		return 1;
+	}
+
+	char buffer[1024], *abspath;
+	int folder_index = 0, entries_count = 0, i;
 
 	init_command_structure(command_structure);
 	parse_command(argc, argv, command_structure);
+	t_entry *entries = NULL;
+
 	while (command_structure->folder_list[folder_index]) {
-		// printf("[DEBUG] : folder at %d : %s\n", folder_index, command_structure->folder_list[folder_index]);
-		folder_index++;
-	}
-	folder_index = 0;
-	while (command_structure->folder_list[folder_index]) {
-		// printf("[DEBUG] : cycle in %s\n", command_structure->folder_list[folder_index]);
+		printf("[DEBUG] : cycle in %s\n", command_structure->folder_list[folder_index]);
+		if (command_structure->multiple_folders) {
+			write(1, command_structure->folder_list[folder_index], strlen(command_structure->folder_list[folder_index]));
+			write(1, ":\n", 2);
+		}
 		abspath = realpath(command_structure->folder_list[folder_index], buffer);
 		if (!abspath) {
-			// printf("[DEBUG] : could not find absolute path.\n");
+			printf("[DEBUG] : could not find absolute path.\n");
 			folder_index++;
-			continue ;
+			continue;
 		}
+
 		directory = opendir(abspath);
-		if (folder_index > 0 && command_structure->multiple_folders == 1)
-			printf("\n");
-		if (command_structure->multiple_folders == 1)
-			printf("%s:\n", command_structure->folder_list[folder_index]);
 		if (!directory) {
-			// printf("[DEBUG] : ft_ls: cannot access '%s': No such file or directory\n", abspath);
-			continue ;
+			printf("[ERROR] : Could not open directory: %s\n", abspath);
+			folder_index++;
+			continue;
 		}
+
+		// Count entries
+		entries_count = 0;
 		while ((pDirent = readdir(directory))) {
-			// printf("[DEBUG] : cycling dirent %s\n", pDirent->d_name);
 			if (pDirent->d_name[0] == '.' && find_in_string(command_structure->flags, 'a') != 1)
-				continue ;
-			stat(pDirent->d_name, &fileStat);
-			// if (S_ISDIR(fileStat.st_mode) && find_in_string(command_structure->flags, 'R') == 1)
-			// 	printf("[DEBUG] : found a subdirectory to list recursively: %s\n", pDirent->d_name);
-			print_file_entry(pDirent, command_structure);
+				continue;
+			entries_count++;
 		}
-		if (find_in_string(command_structure->flags, 'l') != 1)
-			printf("\n");
+		closedir(directory);
+
+		// Allocate memory for entries
+		entries = malloc(sizeof(t_entry) * entries_count);
+		if (!entries) {
+			perror("[ERROR] : Malloc failed");
+			return 1;
+		}
+
+		// Reopen and read entries
+		directory = opendir(abspath);
+		i = 0;
+		while ((pDirent = readdir(directory))) {
+			if (pDirent->d_name[0] == '.' && find_in_string(command_structure->flags, 'a') != 1)
+				continue;
+
+			entries[i].name = strdup(pDirent->d_name);
+			if (!entries[i].name) {
+				perror("[ERROR] : Strdup failed");
+				return 1;
+			}
+			stat(pDirent->d_name, &entries[i].fileStat);
+			printf("[DEBUG] : Saved to array: %s\n", entries[i].name);
+			i++;
+		}
+		closedir(directory);
+
+		if (find_in_string(command_structure->flags, 't') != 1)
+			sort_entries(entries);
+		else
+			sort_entries_by_time(entries);
+
+		// Print sorted entries
+		if (find_in_string(command_structure->flags, 'r') != 1)
+			for (i = 0; i < entries_count; i++)
+				print_file_entry(&entries[i], command_structure);
+		else
+			for (i = entries_count - 1; i >= 0; i--) 
+				print_file_entry(&entries[i], command_structure);
+		i = 0;
+		while (entries[i].name) {
+			free(entries[i].name);
+			i++;
+		}
+		free(entries);
 		folder_index++;
+		if (command_structure->folder_list[folder_index])
+			write(1, "\n", 1);
 	}
+	if (find_in_string(command_structure->flags, 'l') != 1)
+		write(1, "\n", 1);
 	free_command_structure(command_structure);
-	closedir(directory);
-	return (0);
+	return 0;
 }
