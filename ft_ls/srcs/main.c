@@ -128,6 +128,7 @@ void free_command_structure(t_command *command_structure) {
 	if (command_structure->folder_list)
 		while (command_structure->folder_list[index++])
 			free(command_structure->folder_list[index]);
+	free(command_structure);
 }
 
 void init_command_structure(t_command *command_structure) {
@@ -177,12 +178,23 @@ void sort_entries_by_time(t_entry *entries) {
 	}
 }
 
+void free_entries(t_entry *entries) {
+	int index = 0;
+
+	while (entries[index].name) {
+		free(entries[index].name);
+		index++;
+	}
+	free(entries);
+}
+
 int main(int argc, char *argv[]) {
 	DIR			*directory;
 	struct		dirent *pDirent;
 	struct		stat fileStat;
 	t_command	*command_structure = malloc(sizeof(t_command));
-	
+	t_entry *entries = NULL;
+
 	if (!command_structure) {
 		perror("[ERROR] : malloc failed");
 		return 1;
@@ -193,10 +205,9 @@ int main(int argc, char *argv[]) {
 
 	init_command_structure(command_structure);
 	parse_command(argc, argv, command_structure);
-	t_entry *entries = NULL;
 
 	while (command_structure->folder_list[folder_index]) {
-		printf("[DEBUG] : cycle in %s\n", command_structure->folder_list[folder_index]);
+		// printf("[DEBUG] : cycle in %s\n", command_structure->folder_list[folder_index]);
 		if (command_structure->multiple_folders) {
 			write(1, command_structure->folder_list[folder_index], strlen(command_structure->folder_list[folder_index]));
 			write(1, ":\n", 2);
@@ -215,7 +226,6 @@ int main(int argc, char *argv[]) {
 			continue;
 		}
 
-		// Count entries
 		entries_count = 0;
 		while ((pDirent = readdir(directory))) {
 			if (pDirent->d_name[0] == '.' && find_in_string(command_structure->flags, 'a') != 1)
@@ -224,14 +234,13 @@ int main(int argc, char *argv[]) {
 		}
 		closedir(directory);
 
-		// Allocate memory for entries
 		entries = malloc(sizeof(t_entry) * entries_count);
 		if (!entries) {
 			perror("[ERROR] : Malloc failed");
+			free_command_structure(command_structure);
 			return 1;
 		}
 
-		// Reopen and read entries
 		directory = opendir(abspath);
 		i = 0;
 		while ((pDirent = readdir(directory))) {
@@ -244,7 +253,7 @@ int main(int argc, char *argv[]) {
 				return 1;
 			}
 			stat(pDirent->d_name, &entries[i].fileStat);
-			printf("[DEBUG] : Saved to array: %s\n", entries[i].name);
+			// printf("[DEBUG] : Saved to array: %s\n", entries[i].name);
 			i++;
 		}
 		closedir(directory);
@@ -254,19 +263,14 @@ int main(int argc, char *argv[]) {
 		else
 			sort_entries_by_time(entries);
 
-		// Print sorted entries
 		if (find_in_string(command_structure->flags, 'r') != 1)
 			for (i = 0; i < entries_count; i++)
 				print_file_entry(&entries[i], command_structure);
 		else
-			for (i = entries_count - 1; i >= 0; i--) 
+			for (i = entries_count - 1; i >= 0; i--)
 				print_file_entry(&entries[i], command_structure);
-		i = 0;
-		while (entries[i].name) {
-			free(entries[i].name);
-			i++;
-		}
-		free(entries);
+
+		free_entries(entries);
 		folder_index++;
 		if (command_structure->folder_list[folder_index])
 			write(1, "\n", 1);
