@@ -19,13 +19,6 @@ typedef struct s_command {
 	int		folder_count;
 } t_command;
 
-typedef struct s_output {
-	char	permission_table[11];
-	char	**file_entries;
-	char	*owner_name;
-	int		subfolder_amount;
-} t_output;
-
 typedef struct s_entry {
 	char *name;
 	struct stat fileStat;
@@ -48,5 +41,10 @@ void print_file_entry(t_entry *entry, t_command *command_structure);
 
 // memory managers
 void free_command_structure(t_command *command_structure);
+void free_entries(t_entry *entries);
+
+// sorting algos
+void sort_entries(t_entry *entries);
+void sort_entries_by_time(t_entry *entries);
 
 #endif
