@@ -4,12 +4,12 @@ SRCS = ./srcs/*.c
 
 OBJS = $(SRCS:.c=.o)
 
-HDRS = ./*.h
+HDRS = ./srcs/*.h
 
 FLAGS = -Wall -Wextra -Werror
 
 $(NAME):
-		gcc -c $(FLAGS) $(SRCS) $(HDRS)
+		gcc $(FLAGS) $(SRCS) $(HDRS) -o $(NAME)
 		ar rc $(NAME) $(OBJS)
 		ranlib $(NAME)
 

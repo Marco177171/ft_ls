@@ -13,38 +13,34 @@
 # include <grp.h>
 
 typedef struct s_command {
-	int		multiple_folders;
 	char	*flags;
 	char	**folder_list;
 	int		folder_count;
+	int		multiple_folders;
 } t_command;
 
 typedef struct s_entry {
-	char *name;
-	struct stat fileStat;
+	char		*name;
+	struct stat	*fileStat;
 } t_entry;
 
-// parser
+// command managers
+void init_command(int argc, char **argv, t_command *command_struct);
+void free_command(t_command *command_structure);
+
+// utilities
 int find_in_string(char *string, char character);
-void parse_command(int argc, char *argv[], t_command *command_structure);
-
-// measures
-int ft_strlen(char *string);
+int ft_strlen(char *str);
+int ft_strcmp(char *first, char *second);
 
 // sorting algos
-void sort_entries(t_entry *entries);
+void sort(t_command *command, t_entry *entries, int entries_amount);
+void sort_entries(t_entry *entries, int entries_amount);
+void sort_entries_by_time(t_entry *entries, int entries_amount);
 
-// print data
-void print_file_data(t_entry *entry);
-void print_file_creation_time(t_entry *entry);
-void print_file_entry(t_entry *entry, t_command *command_structure);
-
-// memory managers
-void free_command_structure(t_command *command_structure);
-void free_entries(t_entry *entries);
-
-// sorting algos
-void sort_entries(t_entry *entries);
-void sort_entries_by_time(t_entry *entries);
+// printers
+void print_file_data(t_entry entry);
+void print_file_creation_time(t_entry entry);
+void print_file_entry(t_entry *entry, t_command *command_structure, int entries_amount);
 
 #endif

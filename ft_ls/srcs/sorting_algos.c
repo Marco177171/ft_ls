@@ -1,43 +1,71 @@
 #include "ft_ls.h"
 
-void sort_entries(t_entry *entries) {
-	int i, j, min_idx;
-	t_entry temp;
+void swap_entries(t_entry *a, t_entry *b) {
+	t_entry temp = *a;
+	*a = *b;
+	*b = temp;
+}
 
-	for (i = 0; entries[i].name; i++) {
-		min_idx = i;
-		for (j = i + 1; entries[j].name; j++) {
-			if (strcmp(entries[j].name, entries[min_idx].name) < 0) {
-				min_idx = j;
-			}
+// void sort_entries_by_time(t_entry *entries, int entries_amount) {
+// 	int i, j, min_idx;
+// 	t_entry temp;
+
+// 	for (i = 0; i < entries_amount; i++) {
+// 		min_idx = i;
+// 		for (j = i + 1; entries[j].name; j++) {
+// 			if (entries[j].fileStat->st_atime > entries[min_idx].fileStat->st_atime) {
+// 				min_idx = j;
+// 			}
+// 		}
+// 		if (min_idx != i) {
+// 			// printf("[DEBUG] : swapping %s and %s\n", entries[i].name, entries[min_idx].name);
+// 			temp = entries[i];
+// 			entries[i] = entries[min_idx];
+// 			entries[min_idx] = temp;
+// 			// printf("[DEBUG] : swapped %s and %s\n", entries[i].name, entries[min_idx].name);
+// 		}
+// 	}
+// }
+
+void sort_entries_by_time(t_entry *entries, int entries_amount) {
+	int i = 0, j = 0;
+	int smallest_index;
+
+	while (i < entries_amount) {
+		smallest_index = i;
+		j = i + 1;
+		while (j < entries_amount) {
+			if (entries[i].fileStat->st_ctime > entries[j].fileStat->st_ctime)
+				smallest_index = j;
+			j++;
 		}
-		if (min_idx != i) {
-			// printf("[DEBUG] : swapping %s and %s\n", entries[i].name, entries[min_idx].name);
-			temp = entries[i];
-			entries[i] = entries[min_idx];
-			entries[min_idx] = temp;
-			// printf("[DEBUG] : swapped %s and %s\n", entries[i].name, entries[min_idx].name);
-		}
+		if (smallest_index > i)
+			swap_entries(&entries[i], &entries[smallest_index]);
+		i++;
 	}
 }
 
-void sort_entries_by_time(t_entry *entries) {
-	int i, j, min_idx;
-	t_entry temp;
+void sort_entries(t_entry *entries, int entries_amount) {
+	int i = 0, j = 0;
+	int smallest_index;
 
-	for (i = 0; entries[i].name; i++) {
-		min_idx = i;
-		for (j = i + 1; entries[j].name; j++) {
-			if (entries[j].fileStat.st_ctime < entries[min_idx].fileStat.st_ctime) {
-				min_idx = j;
-			}
+	while (i < entries_amount) {
+		smallest_index = i;
+		j = i + 1;
+		while (j < entries_amount) {
+			if (ft_strcmp(entries[j].name, entries[smallest_index].name) < 0)
+				smallest_index = j;
+			j++;
 		}
-		if (min_idx != i) {
-			// printf("[DEBUG] : swapping %s and %s\n", entries[i].name, entries[min_idx].name);
-			temp = entries[i];
-			entries[i] = entries[min_idx];
-			entries[min_idx] = temp;
-			// printf("[DEBUG] : swapped %s and %s\n", entries[i].name, entries[min_idx].name);
-		}
+		if (smallest_index > i)
+			swap_entries(&entries[i], &entries[smallest_index]);
+		i++;
 	}
+}
+
+void sort(t_command *command, t_entry *entries, int entries_amount) {
+	if (find_in_string(command->flags, 't') != 1)
+		sort_entries(entries, entries_amount);
+	else
+		sort_entries_by_time(entries, entries_amount);
 }

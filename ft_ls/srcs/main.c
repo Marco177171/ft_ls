@@ -1,112 +1,118 @@
+// ISSUES
+
+// Maybe stat() does not work or does not allocate memory correctly
+// Check all while cycles and avoid each possible segfault
+// check readdir -> It always copies the same file entry. It does not increase
+
 #include "ft_ls.h"
 
-int find_in_string(char *string, char character) {
+void free_entries(t_entry *entries, int entries_count) {
 	int index = 0;
 
-	// printf("[DEBUG] : finding %c among flags. Flags: %s\n", character, string);
-	while (string[index] != '\0') {
-		// printf("[DEBUG] : searching at index %d: %c\n", index, string[index]);
-		if (string[index] == character) {
-			// printf("[DEBUG] : Found! Returning...\n");
-			return (1);
-		}
+	while (index < entries_count) {
+		free(entries[index].name);
+		free(entries[index].fileStat);
 		index++;
 	}
-	// printf("[DEBUG] : Not found! Returning...\n");
-	return (0);
+	free(entries);
 }
 
-int ft_strlen(char * string) {
+void execute_ls(t_command *command) {
+	DIR *directory;
+	struct dirent *pDirent;
 	int index = 0;
-
-	while (string[index] != '\0')
-		index++;
-	return (index);
-}
-
-int main(int argc, char *argv[]) {
-	DIR			*directory;
-	struct		dirent *pDirent;
-	struct		stat fileStat;
-	t_command	command_structure;
+	int entries_count;
+	char buffer[1024];
+	char *abspath;
 	t_entry *entries = NULL;
 
-	char buffer[1024], *abspath;
-	int folder_index = 0, entries_count = 0, i;
-
-	parse_command(argc, argv, &command_structure);
-
-	while (command_structure.folder_list[folder_index]) {
-		// printf("[DEBUG] : cycle in %s\n", command_structure->folder_list[folder_index]);
-		if (command_structure.multiple_folders) {
-			write(1, command_structure.folder_list[folder_index], strlen(command_structure.folder_list[folder_index]));
+	while (command->folder_list[index]) {
+		
+		if (index > 0)
+			write(1, "\n", 1);
+		
+		if (command->multiple_folders) {
+			write(1, command->folder_list[index], ft_strlen(command->folder_list[index]));
 			write(1, ":\n", 2);
 		}
-		abspath = realpath(command_structure.folder_list[folder_index], buffer);
+
+		abspath = realpath(command->folder_list[index], buffer);
 		if (!abspath) {
-			// printf("[DEBUG] : could not find absolute path.\n");
-			folder_index++;
+			index++;
 			continue;
 		}
 
 		directory = opendir(abspath);
 		if (!directory) {
 			printf("[ERROR] : Could not open directory: %s\n", abspath);
-			folder_index++;
+			index++;
 			continue;
 		}
 
+		// counting entries
 		entries_count = 0;
 		while ((pDirent = readdir(directory))) {
-			if (pDirent->d_name[0] == '.' && find_in_string(command_structure.flags, 'a') != 1)
+			if (pDirent->d_name[0] == '.' && find_in_string(command->flags, 'a') != 1)
 				continue;
 			entries_count++;
 		}
 		closedir(directory);
 
+		// allocating space for entries list
+		entries = malloc(sizeof(t_entry) * entries_count + 1);
+		if (!entries) {
+			perror("Memory allocation failed for entry list");
+			exit(EXIT_FAILURE);
+		}
+		entries[entries_count].name = NULL;
+
+		// save entries to list
 		directory = opendir(abspath);
 		if (!directory) {
 			printf("[ERROR] : Could not open directory (SECOND): %s\n", abspath);
-			folder_index++;
+			index++;
 			continue;
 		}
 
-		i = 0;
+		int entries_index = 0;
 		while ((pDirent = readdir(directory))) {
-			if (pDirent->d_name[0] == '.' && find_in_string(command_structure.flags, 'a') != 1)
+			char buf[2048];
+			memset(buf, 0, 2048);
+
+			if (pDirent->d_name[0] == '.' && find_in_string(command->flags, 'a') != 1)
 				continue;
 
-			entries[i].name = strdup(pDirent->d_name);
-			if (!entries[i].name) {
+			entries[entries_index].name = strdup(pDirent->d_name);
+			if (!entries[entries_index].name) {
 				perror("[ERROR] : Strdup failed");
-				return 1;
+				exit(EXIT_FAILURE);
 			}
-			stat(pDirent->d_name, &entries[i].fileStat);
-			printf("[DEBUG] : Found for array: %s\n", pDirent->d_name);
-			printf("[DEBUG] : Saved to array: %s\n", entries[i].name);
-			i++;
+			entries[entries_index].fileStat = malloc(sizeof(struct stat));
+			strcat(buf, abspath);
+			strcat(buf, "/");
+			strcat(buf, pDirent->d_name);
+			lstat(buf, entries[entries_index].fileStat);
+			entries_index++;
 		}
 		closedir(directory);
 
-		if (find_in_string(command_structure.flags, 't') != 1)
-			sort_entries(entries);
-		else
-			sort_entries_by_time(entries);
+		sort(command, entries, entries_index);
 
-		if (find_in_string(command_structure.flags, 'r') != 1)
-			for (i = 0; i < entries_count; i++)
-				print_file_entry(&entries[i], &command_structure);
-		else
-			for (i = entries_count - 1; i >= 0; i--)
-				print_file_entry(&entries[i], &command_structure);
+		print_file_entry(entries, command, entries_index);
 
-		free_entries(entries);
-		folder_index++;
-		if (command_structure.folder_list[folder_index])
-			write(1, "\n", 1);
+		free_entries(entries, entries_index);
+
+		index++;
 	}
-	if (find_in_string(command_structure.flags, 'l') != 1)
+	if (find_in_string(command->flags, 'l') != 1)
 		write(1, "\n", 1);
-	free_command_structure(&command_structure);
+}
+
+int main(int argc, char **argv) {
+	t_command command_structure = {0};
+
+	init_command(argc, argv, &command_structure);
+	execute_ls(&command_structure);
+	free_command(&command_structure);
 	return 0;
 }
