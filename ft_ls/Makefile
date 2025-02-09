@@ -1,25 +1,15 @@
+SRC = srcs/*.c
 NAME = ft_ls
 
-SRCS = ./srcs/*.c 
-
-OBJS = $(SRCS:.c=.o)
-
-HDRS = ./srcs/*.h
-
-FLAGS = -Wall -Wextra -Werror
+all: $(NAME)
 
 $(NAME):
-		gcc $(FLAGS) $(SRCS) $(HDRS) -o $(NAME)
-		ar rc $(NAME) $(OBJS)
-		ranlib $(NAME)
-
-all:	$(NAME)
+		gcc -Wextra -Werror -Wall $(SRC) -o $(NAME)
 
 clean:
-		rm -f $(OBJS)
 
-fclean:     clean
-		rm -f $(NAME)
+fclean:	clean
+		rm -rf $(NAME)
 
 re:		fclean all
 
