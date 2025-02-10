@@ -33,11 +33,11 @@ void print_file_entry(t_entry *entry, t_command *command_structure, int entries_
 				struct group *grp = getgrgid(entry[index].fileStat->st_uid);
 				print_file_data(entry[index]);
 				if (find_in_string(command_structure->flags, 'g') != 1)
-					write(1, strcat(pwd->pw_name, " "), strlen(pwd->pw_name) + 1);
-				write(1, strcat(grp->gr_name, " "), strlen(grp->gr_name) + 1);
+					write(1, strcat(pwd->pw_name, " "), ft_strlen(pwd->pw_name) + 1);
+				write(1, strcat(grp->gr_name, " "), ft_strlen(grp->gr_name) + 1);
 				print_file_creation_time(entry[index]);
 			}
-			write(1, entry[index].name, strlen(entry[index].name));
+			write(1, entry[index].name, ft_strlen(entry[index].name));
 			write(1, find_in_string(command_structure->flags, 'l') == 1 ? "\n" : " ", 1);
 			index--;
 		}
@@ -49,11 +49,11 @@ void print_file_entry(t_entry *entry, t_command *command_structure, int entries_
 				struct group *grp = getgrgid(entry[index].fileStat->st_uid);
 				print_file_data(entry[index]);
 				if (find_in_string(command_structure->flags, 'g') != 1)
-					write(1, strcat(pwd->pw_name, " "), strlen(pwd->pw_name) + 1);
-				write(1, strcat(grp->gr_name, " "), strlen(grp->gr_name) + 1);
+					write(1, strcat(pwd->pw_name, " "), ft_strlen(pwd->pw_name) + 1);
+				write(1, strcat(grp->gr_name, " "), ft_strlen(grp->gr_name) + 1);
 				print_file_creation_time(entry[index]);
 			}
-			write(1, entry[index].name, strlen(entry[index].name));
+			write(1, entry[index].name, ft_strlen(entry[index].name));
 			write(1, find_in_string(command_structure->flags, 'l') == 1 ? "\n" : " ", 1);
 			index++;
 		}
