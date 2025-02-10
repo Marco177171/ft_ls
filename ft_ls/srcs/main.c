@@ -1,9 +1,3 @@
-// ISSUES
-
-// Maybe stat() does not work or does not allocate memory correctly
-// Check all while cycles and avoid each possible segfault
-// check readdir -> It always copies the same file entry. It does not increase
-
 #include "ft_ls.h"
 
 void free_entries(t_entry *entries, int entries_count) {
@@ -21,7 +15,7 @@ void execute_ls(t_command *command) {
 	DIR *directory;
 	struct dirent *pDirent;
 	int index = 0;
-	int entries_count;
+	int entries_count = 0, recursive_index = 0;
 	char buffer[1024];
 	char *abspath;
 	t_entry *entries = NULL;
@@ -31,7 +25,7 @@ void execute_ls(t_command *command) {
 		if (index > 0)
 			write(1, "\n", 1);
 		
-		if (command->multiple_folders) {
+		if (command->multiple_folders || find_in_string(command->flags, 'R')) {
 			write(1, command->folder_list[index], ft_strlen(command->folder_list[index]));
 			write(1, ":\n", 2);
 		}
@@ -92,6 +86,7 @@ void execute_ls(t_command *command) {
 			strcat(buf, "/");
 			strcat(buf, pDirent->d_name);
 			lstat(buf, entries[entries_index].fileStat);
+
 			entries_index++;
 		}
 		closedir(directory);
@@ -99,6 +94,24 @@ void execute_ls(t_command *command) {
 		sort(command, entries, entries_index);
 
 		print_file_entry(entries, command, entries_index);
+
+		if (find_in_string(command->flags, 'R') == 1) {
+			recursive_index = 0;
+			while (recursive_index < entries_index) {
+				if (S_ISDIR(entries[recursive_index].fileStat->st_mode)) {
+					if (strcmp(entries[recursive_index].name, ".") != 0 && strcmp(entries[recursive_index].name, "..") != 0) {  // Avoid loops
+						char new_path[2048];
+						memset(new_path, 0, 2048);
+						snprintf(new_path, sizeof(new_path), "%s/%s", abspath, entries[recursive_index].name);
+						t_command new_command = *command;
+						new_command.folder_list = (char *[]) { new_path, NULL };
+						write(1, "\n", 1);
+						execute_ls(&new_command);
+					}
+				}
+				recursive_index++;
+			}
+		}
 
 		free_entries(entries, entries_index);
 

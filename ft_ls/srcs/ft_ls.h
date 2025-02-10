@@ -15,6 +15,7 @@
 typedef struct s_command {
 	char	*flags;
 	char	**folder_list;
+	char	**recursion_list;
 	int		folder_count;
 	int		multiple_folders;
 } t_command;
