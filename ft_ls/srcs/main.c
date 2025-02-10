@@ -15,7 +15,8 @@ void execute_ls(t_command *command) {
 	DIR *directory;
 	struct dirent *pDirent;
 	int index = 0;
-	int entries_count = 0, recursive_index = 0;
+	int entries_count = 0;
+	int recursive_index = 0;
 	char buffer[1024];
 	char *abspath;
 	t_entry *entries = NULL;
