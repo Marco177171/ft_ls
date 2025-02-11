@@ -33,6 +33,7 @@ void free_command(t_command *command_structure);
 int find_in_string(char *string, char character);
 int ft_strlen(char *str);
 int ft_strcmp(char *first, char *second);
+char *ft_itoa(int n);
 
 // sorting algos
 void sort(t_command *command, t_entry *entries, int entries_amount);
@@ -42,6 +43,7 @@ void sort_entries_by_time(t_entry *entries, int entries_amount);
 // printers
 void print_file_data(t_entry entry);
 void print_file_creation_time(t_entry entry);
+void print_this_entry(t_entry *entry, t_command *command_structure, int index);
 void print_file_entry(t_entry *entry, t_command *command_structure, int entries_amount);
 
 #endif

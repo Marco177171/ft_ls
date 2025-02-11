@@ -21,40 +21,38 @@ void print_file_creation_time(t_entry entry) {
 	write(1, " ", 1);
 }
 
+void print_this_entry(t_entry *entry, t_command *command_structure, int index) {
+	if (find_in_string(command_structure->flags, 'l') == 1) {
+		struct passwd *pwd = getpwuid(entry[index].fileStat->st_uid);
+		struct group *grp = getgrgid(entry[index].fileStat->st_uid);
+		print_file_data(entry[index]);
+		if (find_in_string(command_structure->flags, 'g') != 1)
+			write(1, strcat(pwd->pw_name, " "), ft_strlen(pwd->pw_name) + 1);
+		write(1, strcat(grp->gr_name, " "), ft_strlen(grp->gr_name) + 1);
+		print_file_creation_time(entry[index]);
+		
+		char *file_size = ft_itoa((int)(entry[index].fileStat->st_size));
+		int filesize_len = ft_strlen(file_size);
+		write(1, strcat(file_size, "\t"), filesize_len + 1);
+		free(file_size);
+	}
+	write(1, entry[index].name, ft_strlen(entry[index].name));
+	write(1, find_in_string(command_structure->flags, 'l') == 1 ? "\n" : " ", 1);
+}
+
 void print_file_entry(t_entry *entry, t_command *command_structure, int entries_amount) {
 	int index = 0;
 
 	if (find_in_string(command_structure->flags, 'r')) {
 		index = entries_amount - 1;
-
 		while (index >= 0) {
-			if (find_in_string(command_structure->flags, 'l') == 1) {
-				struct passwd *pwd = getpwuid(entry[index].fileStat->st_uid);
-				struct group *grp = getgrgid(entry[index].fileStat->st_uid);
-				print_file_data(entry[index]);
-				if (find_in_string(command_structure->flags, 'g') != 1)
-					write(1, strcat(pwd->pw_name, " "), ft_strlen(pwd->pw_name) + 1);
-				write(1, strcat(grp->gr_name, " "), ft_strlen(grp->gr_name) + 1);
-				print_file_creation_time(entry[index]);
-			}
-			write(1, entry[index].name, ft_strlen(entry[index].name));
-			write(1, find_in_string(command_structure->flags, 'l') == 1 ? "\n" : " ", 1);
+			print_this_entry(entry, command_structure, index);
 			index--;
 		}
 	}
 	else {
 		while (index < entries_amount) {
-			if (find_in_string(command_structure->flags, 'l') == 1) {
-				struct passwd *pwd = getpwuid(entry[index].fileStat->st_uid);
-				struct group *grp = getgrgid(entry[index].fileStat->st_uid);
-				print_file_data(entry[index]);
-				if (find_in_string(command_structure->flags, 'g') != 1)
-					write(1, strcat(pwd->pw_name, " "), ft_strlen(pwd->pw_name) + 1);
-				write(1, strcat(grp->gr_name, " "), ft_strlen(grp->gr_name) + 1);
-				print_file_creation_time(entry[index]);
-			}
-			write(1, entry[index].name, ft_strlen(entry[index].name));
-			write(1, find_in_string(command_structure->flags, 'l') == 1 ? "\n" : " ", 1);
+			print_this_entry(entry, command_structure, index);
 			index++;
 		}
 	}

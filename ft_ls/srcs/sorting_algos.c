@@ -6,27 +6,6 @@ void swap_entries(t_entry *a, t_entry *b) {
 	*b = temp;
 }
 
-// void sort_entries_by_time(t_entry *entries, int entries_amount) {
-// 	int i, j, min_idx;
-// 	t_entry temp;
-
-// 	for (i = 0; i < entries_amount; i++) {
-// 		min_idx = i;
-// 		for (j = i + 1; entries[j].name; j++) {
-// 			if (entries[j].fileStat->st_atime > entries[min_idx].fileStat->st_atime) {
-// 				min_idx = j;
-// 			}
-// 		}
-// 		if (min_idx != i) {
-// 			// printf("[DEBUG] : swapping %s and %s\n", entries[i].name, entries[min_idx].name);
-// 			temp = entries[i];
-// 			entries[i] = entries[min_idx];
-// 			entries[min_idx] = temp;
-// 			// printf("[DEBUG] : swapped %s and %s\n", entries[i].name, entries[min_idx].name);
-// 		}
-// 	}
-// }
-
 void sort_entries_by_time(t_entry *entries, int entries_amount) {
 	int i = 0, j = 0;
 	int smallest_index;
